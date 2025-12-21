@@ -67,7 +67,22 @@ class ApplicationModel {
       throw error;
     }
   }
+
+  /**
+   * Delete application
+   * @param {string} applicationId - Application ID
+   * @param {string} userId - User ID (for authorization)
+   * @returns {Object} Deleted application or null
+   */
+  async deleteApplication(applicationId, userId) {
+    try {
+      return await Application.deleteApplication(applicationId, userId);
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = ApplicationModel;
+
 

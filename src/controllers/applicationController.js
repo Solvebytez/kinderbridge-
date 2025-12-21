@@ -160,7 +160,42 @@ class ApplicationController {
       return internalErrorResponse(error.message);
     }
   }
+
+  /**
+   * Delete application
+   * @param {string} applicationId - Application ID
+   * @param {string} userId - User ID (for authorization)
+   * @returns {Object} Response with deletion confirmation
+   */
+  async deleteApplication(applicationId, userId) {
+    try {
+      if (!applicationId) {
+        return errorResponse("Application ID is required", 400);
+      }
+
+      if (!userId) {
+        return unauthorizedResponse("User ID is required");
+      }
+
+      const application = await this.applicationModel.deleteApplication(
+        applicationId,
+        userId
+      );
+
+      if (!application) {
+        return notFoundResponse("Application not found or you don't have permission to delete it");
+      }
+
+      const response = successResponse({ deleted: true, id: applicationId });
+      response.body.message = "Application deleted successfully";
+      return response;
+    } catch (error) {
+      console.error("Error deleting application:", error);
+      return internalErrorResponse(error.message);
+    }
+  }
 }
 
 module.exports = ApplicationController;
+
 

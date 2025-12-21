@@ -203,6 +203,22 @@ applicationSchema.statics.updateApplicationStatus = async function (
   }
 };
 
+// Static method to delete application
+applicationSchema.statics.deleteApplication = async function (
+  applicationId,
+  userId
+) {
+  try {
+    const result = await this.findOneAndDelete({
+      _id: applicationId,
+      userId, // Ensure user owns the application
+    });
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Export model (check if already compiled to avoid recompilation errors)
 let Application;
 try {
@@ -212,4 +228,5 @@ try {
 }
 
 module.exports = Application;
+
 

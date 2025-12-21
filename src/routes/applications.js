@@ -99,5 +99,27 @@ router.put("/:id/status", authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE /api/applications/:id - Delete an application
+router.delete("/:id", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+
+    const ApplicationController = require("../controllers/applicationController");
+    const applicationController = new ApplicationController(req.db);
+
+    const result = await applicationController.deleteApplication(id, userId);
+    res.status(result.statusCode).json(result.body);
+  } catch (error) {
+    console.error("Error deleting application:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+});
+
 module.exports = router;
+
 
