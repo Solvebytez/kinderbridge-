@@ -1,0 +1,495 @@
+// Email Service for Sending PDF Reports
+const nodemailer = require('nodemailer');
+const path = require('path');
+const fs = require('fs');
+const { generateWelcomeGuidePDF } = require('./pdfGenerator');
+
+// Load email configuration from environment or config file
+function getEmailConfig() {
+  // Try to get from environment variables first
+  // Support both SMTP_PASS and SMTP_PASSWORD for backward compatibility
+  const emailConfig = {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    auth: {
+      user: process.env.SMTP_USER || '',
+      pass: process.env.SMTP_PASS || process.env.SMTP_PASSWORD || ''
+    }
+  };
+  
+  return emailConfig;
+}
+
+// Get email sender information
+function getEmailFrom() {
+  const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'noreply@kinderbridge.com';
+  const fromName = process.env.SMTP_FROM_NAME || 'KinderBridge';
+  return `"${fromName}" <${fromEmail}>`;
+}
+
+// Create email transporter
+function createTransporter() {
+  const config = getEmailConfig();
+  
+  // If no email config, return null (email sending will be skipped)
+  if (!config.auth.user || !config.auth.pass) {
+    console.log('⚠️ Email configuration not found. Email sending will be skipped.');
+    return null;
+  }
+  
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: config.auth
+  });
+}
+
+// Send PDF report via email
+async function sendPDFReport(email, pdfBuffer, userName = 'User') {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('⚠️ Email transporter not available. Skipping email send.');
+      return {
+        success: false,
+        message: 'Email service not configured'
+      };
+    }
+    
+    const mailOptions = {
+      from: getEmailFrom(),
+      to: email,
+      subject: 'Your Daycare Full Report - Daycare Concierge',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎉 Your Daycare Report is Ready!</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${userName},</p>
+              
+              <p>Thank you for your purchase! Your comprehensive Daycare Full Report is attached to this email.</p>
+              
+              <p>The report includes:</p>
+              <ul>
+                <li>Complete list of all daycares</li>
+                <li>Detailed information for each daycare</li>
+                <li>Ratings, pricing, and contact details</li>
+                <li>Features and amenities</li>
+                <li>Location and address information</li>
+              </ul>
+              
+              <p>We hope this report helps you find the perfect daycare for your child!</p>
+              
+              <p>If you have any questions, please don't hesitate to contact us.</p>
+              
+              <p>Best regards,<br>
+              <strong>The Daycare Concierge Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>This is an automated email. Please do not reply to this message.</p>
+              <p>&copy; ${new Date().getFullYear()} Daycare Concierge. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      attachments: [
+        {
+          filename: `daycare-full-report-${new Date().toISOString().split('T')[0]}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
+    };
+    
+    const info = await transporter.sendMail(mailOptions);
+    
+    console.log('✅ Email sent successfully:', info.messageId);
+    
+    return {
+      success: true,
+      messageId: info.messageId,
+      message: 'Email sent successfully'
+    };
+    
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Send registration welcome email
+async function sendRegistrationEmail(userEmail, firstName = 'User') {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('⚠️ Email transporter not available. Skipping registration email.');
+      return {
+        success: false,
+        message: 'Email service not configured'
+      };
+    }
+    
+    // Generate welcome guide PDF
+    console.log('🔵 [EMAIL] Generating welcome guide PDF...');
+    let pdfBuffer = null;
+    try {
+      pdfBuffer = await generateWelcomeGuidePDF(firstName, userEmail);
+      console.log('✅ [EMAIL] Welcome guide PDF generated successfully');
+    } catch (pdfError) {
+      console.warn('⚠️ [EMAIL] Failed to generate welcome guide PDF:', pdfError);
+      // Continue without PDF if generation fails
+    }
+    
+    const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_DEV_URL || 'http://localhost:3000';
+    
+    // Build attachments array
+    const attachments = [];
+    if (pdfBuffer) {
+      attachments.push({
+        filename: `welcome-guide-${new Date().toISOString().split('T')[0]}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      });
+    }
+    
+    const mailOptions = {
+      from: getEmailFrom(),
+      to: userEmail,
+      subject: `Welcome to ${process.env.SMTP_FROM_NAME || 'KinderBridge'}, ${firstName}!`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+              line-height: 1.6; 
+              color: #333; 
+              margin: 0; 
+              padding: 0; 
+              background-color: #f5f5f5;
+            }
+            .email-container { 
+              max-width: 600px; 
+              margin: 0 auto; 
+              background-color: #ffffff;
+            }
+            .logo-section { 
+              padding: 40px 30px 20px; 
+              text-align: center; 
+              border-bottom: 1px solid #e5e5e5;
+            }
+            .logo { 
+              font-size: 24px; 
+              font-weight: bold; 
+              color: #2c3e50; 
+              margin-bottom: 8px;
+            }
+            .tagline { 
+              font-size: 14px; 
+              color: #7f8c8d; 
+              font-style: italic;
+            }
+            .content { 
+              padding: 40px 30px; 
+            }
+            .greeting { 
+              font-size: 18px; 
+              margin-bottom: 20px; 
+              color: #2c3e50;
+            }
+            .welcome-text { 
+              font-size: 16px; 
+              margin-bottom: 20px; 
+              color: #34495e;
+            }
+            .story-section { 
+              background-color: #f8f9fa; 
+              padding: 20px; 
+              border-radius: 8px; 
+              margin: 25px 0; 
+              border-left: 4px solid #3498db;
+            }
+            .story-text { 
+              font-size: 15px; 
+              color: #555; 
+              line-height: 1.7;
+            }
+            .feedback-section { 
+              background-color: #fff; 
+              border: 2px solid #e5e5e5; 
+              border-radius: 8px; 
+              padding: 25px; 
+              margin: 30px 0;
+            }
+            .feedback-title { 
+              font-size: 18px; 
+              font-weight: 600; 
+              color: #2c3e50; 
+              margin-bottom: 20px;
+            }
+            .feedback-option { 
+              margin-bottom: 20px; 
+              padding-bottom: 20px; 
+              border-bottom: 1px solid #e5e5e5;
+            }
+            .feedback-option:last-child { 
+              border-bottom: none; 
+              margin-bottom: 0; 
+              padding-bottom: 0;
+            }
+            .feedback-label { 
+              font-weight: 600; 
+              color: #2c3e50; 
+              margin-bottom: 8px; 
+              font-size: 16px;
+            }
+            .feedback-description { 
+              color: #7f8c8d; 
+              font-size: 14px; 
+              line-height: 1.6;
+            }
+            .closing { 
+              font-size: 16px; 
+              color: #34495e; 
+              margin: 25px 0;
+            }
+            .signature { 
+              margin-top: 30px;
+            }
+            .signature-name { 
+              font-weight: 600; 
+              font-size: 16px; 
+              color: #2c3e50; 
+              margin-bottom: 5px;
+            }
+            .signature-title { 
+              font-size: 14px; 
+              color: #7f8c8d; 
+              margin-bottom: 5px;
+            }
+            .signature-email { 
+              font-size: 14px; 
+              color: #3498db; 
+              text-decoration: none;
+            }
+            .explore-section { 
+              background-color: #f8f9fa; 
+              padding: 25px; 
+              border-radius: 8px; 
+              margin: 30px 0; 
+              text-align: center;
+            }
+            .explore-title { 
+              font-size: 16px; 
+              color: #2c3e50; 
+              margin-bottom: 20px; 
+              font-weight: 600;
+            }
+            .action-buttons { 
+              display: flex; 
+              gap: 15px; 
+              justify-content: center; 
+              flex-wrap: wrap;
+            }
+            .action-button { 
+              display: inline-flex; 
+              align-items: center; 
+              gap: 8px; 
+              padding: 12px 20px; 
+              background-color: #3498db; 
+              color: white; 
+              text-decoration: none; 
+              border-radius: 6px; 
+              font-size: 14px; 
+              font-weight: 500; 
+              transition: background-color 0.3s;
+            }
+            .action-button:hover { 
+              background-color: #2980b9;
+            }
+            .footer { 
+              background-color: #2c3e50; 
+              color: #ecf0f1; 
+              padding: 30px; 
+              text-align: center; 
+              font-size: 12px;
+            }
+            .footer-logo { 
+              font-size: 18px; 
+              font-weight: bold; 
+              margin-bottom: 15px;
+            }
+            .footer-tagline { 
+              font-size: 13px; 
+              color: #bdc3c7; 
+              margin-bottom: 15px; 
+              font-style: italic;
+            }
+            .footer-contact { 
+              color: #95a5a6; 
+              margin: 10px 0; 
+              font-size: 12px;
+            }
+            .footer-links { 
+              margin-top: 20px; 
+              padding-top: 20px; 
+              border-top: 1px solid #34495e;
+            }
+            .footer-link { 
+              color: #95a5a6; 
+              text-decoration: none; 
+              margin: 0 10px; 
+              font-size: 12px;
+            }
+            .footer-link:hover { 
+              color: #ecf0f1;
+            }
+            .compliance { 
+              margin-top: 15px; 
+              padding-top: 15px; 
+              border-top: 1px solid #34495e; 
+              color: #7f8c8d; 
+              font-size: 11px; 
+              line-height: 1.5;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="email-container">
+            <!-- Logo Section -->
+            <div class="logo-section">
+              <div class="logo">${process.env.SMTP_FROM_NAME || 'KinderBridge'}</div>
+              <div class="tagline">Finding daycare with actual availability</div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="content">
+              <div class="greeting">Hi ${firstName},</div>
+              
+              <div class="welcome-text">
+                Welcome to ${process.env.SMTP_FROM_NAME || 'KinderBridge'}! I'm so glad you joined us.
+              </div>
+
+              <!-- Origin Story Section -->
+              <div class="story-section">
+                <div class="story-text">
+                  We started this platform after experiencing the challenge of finding quality daycare with real availability. If you've ever felt that same frustration, you know how stressful it can be. Our hope is that ${process.env.SMTP_FROM_NAME || 'KinderBridge'} makes this process a whole lot easier for you.
+                </div>
+              </div>
+
+              <!-- Feedback Section -->
+              <div class="feedback-section">
+                <div class="feedback-title">Share Your Feedback</div>
+                
+                <div class="feedback-option">
+                  <div class="feedback-label">💬 Quick chat</div>
+                  <div class="feedback-description">
+                    I'd love to learn more about why you signed up and how we can make the app even better for families like yours. If you're open to a quick 5-10 minute call, just reply with a time that works for you.
+                  </div>
+                </div>
+                
+                <div class="feedback-option">
+                  <div class="feedback-label">✉️ Send feedback</div>
+                  <div class="feedback-description">
+                    Have thoughts, suggestions, or questions? Just reply to this email—I read every message personally. Your feedback would mean a lot—it'll help shape the future of ${process.env.SMTP_FROM_NAME || 'KinderBridge'}.
+                  </div>
+                </div>
+              </div>
+
+              <div class="closing">
+                Looking forward to hearing from you and building this together,
+              </div>
+
+              <!-- Signature -->
+              <div class="signature">
+                <div class="signature-name">The ${process.env.SMTP_FROM_NAME || 'KinderBridge'} Team</div>
+                <div class="signature-title">Founder, ${process.env.SMTP_FROM_NAME || 'KinderBridge'}</div>
+                <a href="mailto:${process.env.SMTP_FROM_EMAIL || 'noreply@kinderbridge.com'}" class="signature-email">${process.env.SMTP_FROM_EMAIL || 'noreply@kinderbridge.com'}</a>
+              </div>
+
+              <!-- Explore Platform Section -->
+              <div class="explore-section">
+                <div class="explore-title">While you're here, feel free to explore the platform:</div>
+                <div class="action-buttons">
+                  <a href="${frontendUrl}/search" class="action-button">
+                    🔍 Search Daycares
+                  </a>
+                  <a href="${frontendUrl}/search" class="action-button">
+                    🔔 Create Alert
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+              <div class="footer-logo">${process.env.SMTP_FROM_NAME || 'KinderBridge'}</div>
+              <div class="footer-tagline">Built by parents, for parents</div>
+              <div class="footer-contact">
+                ${process.env.SMTP_FROM_EMAIL || 'noreply@kinderbridge.com'} | Toronto, ON, Canada
+              </div>
+              <div class="footer-links">
+                <a href="${frontendUrl}/unsubscribe" class="footer-link">Unsubscribe</a>
+                <a href="${frontendUrl}/privacy" class="footer-link">Privacy Policy</a>
+              </div>
+              <div class="compliance">
+                This welcome message complies with Canada's Anti-Spam Legislation (CASL). You received this because you confirmed your email address for a ${process.env.SMTP_FROM_NAME || 'KinderBridge'} account.
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      attachments: attachments.length > 0 ? attachments : undefined
+    };
+    
+    const info = await transporter.sendMail(mailOptions);
+    
+    console.log('✅ Registration email sent successfully:', info.messageId);
+    
+    return {
+      success: true,
+      messageId: info.messageId,
+      message: 'Registration email sent successfully'
+    };
+    
+  } catch (error) {
+    console.error('❌ Error sending registration email:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+module.exports = {
+  sendPDFReport,
+  sendRegistrationEmail,
+  createTransporter
+};
+

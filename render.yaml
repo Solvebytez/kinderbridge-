@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: daycare-concierge-backend
+    env: node
+    plan: free
+    buildCommand: rm -rf node_modules package-lock.json && npm install
+    startCommand: node render-hybrid-server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: DB_NAME
+        value: daycare_concierge
