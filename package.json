@@ -10,8 +10,7 @@
     "clean-install": "rm -rf node_modules package-lock.json && npm install",
     "deep-clean": "rm -rf node_modules package-lock.json .npmrc && npm cache clean --force && npm install",
     "prebuild": "npm run deep-clean",
-    "build": "echo 'Backend build complete'",
-    "postinstall": "npm audit fix --force"
+    "build": "echo 'Backend build complete'"
   },
   "keywords": [],
   "author": "",
