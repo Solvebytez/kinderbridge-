@@ -20,7 +20,12 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", "https:"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "https://day-care-app.onrender.com"],
+        connectSrc: [
+          "'self'",
+          "https://day-care-app.onrender.com",
+          "https://www.kinderbridge.ca",
+          "https://kinderbridge.ca",
+        ],
         fontSrc: ["'self'", "https:", "data:"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
@@ -37,6 +42,8 @@ app.use(
 
 // CORS configuration (supports both development and production)
 const allowedOrigins = [
+  "https://www.kinderbridge.ca",
+  "https://kinderbridge.ca", // Also allow without www
   "https://day-care-app.onrender.com",
   process.env.FRONTEND_URL,
   process.env.FRONTEND_DEV_URL || "http://localhost:3000",
