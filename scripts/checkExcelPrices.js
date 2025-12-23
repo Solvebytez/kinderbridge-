@@ -63,3 +63,5 @@ console.log(`✅ Total daycares with prices: ${Array.from(priceCounts.values()).
 
 process.exit(0);
 
+
+
