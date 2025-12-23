@@ -44,7 +44,9 @@ app.use(
 const allowedOrigins = [
   "https://www.kinderbridge.ca",
   "https://kinderbridge.ca", // Also allow without www
+  "https://api.kinderbridge.ca", // API subdomain
   "https://day-care-app.onrender.com",
+  "https://day-care-app-1.onrender.com", // Current Render URL
   process.env.FRONTEND_URL,
   process.env.FRONTEND_DEV_URL || "http://localhost:3000",
   "http://localhost:3000",

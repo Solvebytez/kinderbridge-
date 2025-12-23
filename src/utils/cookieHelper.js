@@ -47,9 +47,11 @@ const setAccessTokenCookie = (res, token) => {
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction, // Only send over HTTPS in production
-    sameSite: isProduction ? 'none' : 'lax', // Support cross-origin in production
+    sameSite: isProduction ? 'lax' : 'lax', // Use 'lax' when using subdomain (api.kinderbridge.ca)
     maxAge: maxAge,
     path: '/',
+    // Set domain to share cookies across subdomains (www.kinderbridge.ca and api.kinderbridge.ca)
+    domain: isProduction ? '.kinderbridge.ca' : undefined,
   };
   
   console.log('🍪 [COOKIE_HELPER] Cookie options:', cookieOptions);
@@ -72,9 +74,11 @@ const setRefreshTokenCookie = (res, token) => {
   res.cookie('refreshToken', token, {
     httpOnly: true,
     secure: isProduction, // Only send over HTTPS in production
-    sameSite: isProduction ? 'none' : 'lax', // Support cross-origin in production
+    sameSite: isProduction ? 'lax' : 'lax', // Use 'lax' when using subdomain (api.kinderbridge.ca)
     maxAge: maxAge,
     path: '/',
+    // Set domain to share cookies across subdomains (www.kinderbridge.ca and api.kinderbridge.ca)
+    domain: isProduction ? '.kinderbridge.ca' : undefined,
   });
 };
 
@@ -88,15 +92,17 @@ const clearAuthCookies = (res) => {
   res.clearCookie('accessToken', {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: isProduction ? 'lax' : 'lax',
     path: '/',
+    domain: isProduction ? '.kinderbridge.ca' : undefined,
   });
   
   res.clearCookie('refreshToken', {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: isProduction ? 'lax' : 'lax',
     path: '/',
+    domain: isProduction ? '.kinderbridge.ca' : undefined,
   });
 };
 
