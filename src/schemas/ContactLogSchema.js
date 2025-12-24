@@ -52,9 +52,9 @@ const contactLogSchema = new mongoose.Schema(
     },
     notes: {
       type: String,
-      required: [true, "Notes are required"],
+      required: false,
       trim: true,
-      minlength: [10, "Notes must be at least 10 characters long"],
+      default: "",
       maxlength: [1000, "Notes cannot exceed 1000 characters"],
     },
     outcome: {
@@ -193,6 +193,7 @@ try {
 }
 
 module.exports = ContactLog;
+
 
 
 

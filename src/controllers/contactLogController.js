@@ -42,12 +42,7 @@ class ContactLogController {
         return errorResponse("Purpose is required", 400);
       }
 
-      if (!contactLogData.notes || contactLogData.notes.length < 10) {
-        return errorResponse(
-          "Notes are required and must be at least 10 characters",
-          400
-        );
-      }
+      // Notes is optional - no validation needed
 
       // Add userId to contact log data
       const fullContactLogData = {
@@ -146,13 +141,7 @@ class ContactLogController {
         return errorResponse("Contact log ID is required", 400);
       }
 
-      // Validate update data
-      if (updateData.notes && updateData.notes.length < 10) {
-        return errorResponse(
-          "Notes must be at least 10 characters long",
-          400
-        );
-      }
+      // Notes is optional - no validation needed
 
       const contactLog = await this.contactLogModel.updateContactLog(
         contactLogId,
@@ -212,6 +201,7 @@ class ContactLogController {
 }
 
 module.exports = ContactLogController;
+
 
 
 

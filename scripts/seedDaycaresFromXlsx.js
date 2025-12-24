@@ -24,10 +24,14 @@ function toStringOrNo(v) {
 function toNumberSafe(v) {
   if (v === null || v === undefined || v === "") return 0;
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-  const s = String(v);
+  const s = String(v).trim();
   
-  // If it's a range like "475-500" or "475$ - 500$", extract the first number
-  if (s.includes("-")) {
+  // Check if it's a negative number (starts with minus sign)
+  const isNegative = s.startsWith("-");
+  
+  // If it's a range like "475-500" or "475$ - 500$" (but not a negative number)
+  // A negative number like "-79.84" should NOT be treated as a range
+  if (s.includes("-") && !isNegative) {
     const parts = s.split("-");
     if (parts.length >= 2) {
       const firstPart = parts[0].replace(/[^0-9.]/g, "");
@@ -36,8 +40,9 @@ function toNumberSafe(v) {
     }
   }
   
-  // Otherwise, extract all numbers (for single values)
-  const cleaned = s.replace(/[^0-9.]/g, "");
+  // For negative numbers or single values, preserve the minus sign
+  // Replace everything except digits, decimal point, and leading minus sign
+  const cleaned = s.replace(/[^0-9.\-]/g, "").replace(/(?!^)-/g, ""); // Keep only first minus sign
   const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : 0;
 }
@@ -159,6 +164,13 @@ async function main() {
     const address = toStringSafe(row["Address"]);
     const city = toStringSafe(row["City"]);
 
+    // Log progress every 100 records
+    if ((i + 1) % 100 === 0) {
+      console.log(
+        `📊 Progress: ${i + 1}/${rows.length} records processed | updated=${updated} created=${created} skipped=${skipped}`
+      );
+    }
+
     if (!name || !address || !city) {
       skipped += 1;
       if (logEach || (logEvery > 0 && (i + 1) % logEvery === 0)) {
@@ -227,7 +239,20 @@ async function main() {
           "School Age Quality Rating"
         ),
       },
+      coordinates: {
+        lat: toNumberSafe(row["Latitude"]),
+        lng: toNumberSafe(row["Longitude"]),
+      },
     };
+
+    // Debug: Log coordinates for first few records
+    if (i < 3) {
+      console.log(`\n🔍 Debug Row ${i + 1}:`);
+      console.log(`   Name: ${name}`);
+      console.log(`   Raw Latitude from Excel: "${row["Latitude"]}" (type: ${typeof row["Latitude"]})`);
+      console.log(`   Raw Longitude from Excel: "${row["Longitude"]}" (type: ${typeof row["Longitude"]})`);
+      console.log(`   Parsed lat: ${doc.coordinates.lat}, lng: ${doc.coordinates.lng}`);
+    }
 
     const filter = makeUpsertFilter(doc);
     const existing = await Daycare.findOne(filter).select("_id").lean();
