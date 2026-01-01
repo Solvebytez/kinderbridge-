@@ -487,9 +487,141 @@ async function sendRegistrationEmail(userEmail, firstName = 'User') {
   }
 }
 
+/**
+ * Send OTP email for password reset (transactional email via SMTP)
+ * @param {string} email - User email address
+ * @param {string} otp - One-time password code
+ * @returns {Promise<Object>} Result object with success status
+ */
+async function sendOTPEmail(email, otp) {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('⚠️ Email transporter not available. Cannot send OTP email.');
+      return {
+        success: false,
+        message: 'Email service not configured'
+      };
+    }
+
+    const brandName = process.env.SMTP_FROM_NAME || 'KinderBridge';
+    const fromEmail = getEmailFrom();
+
+    const mailOptions = {
+      from: fromEmail,
+      to: email,
+      subject: `Your Password Reset Code - ${brandName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+              line-height: 1.6; 
+              color: #333; 
+              margin: 0; 
+              padding: 0; 
+              background-color: #f5f5f5;
+            }
+            .email-container { 
+              max-width: 600px; 
+              margin: 0 auto; 
+              background-color: #ffffff;
+            }
+            .logo-section { 
+              padding: 40px 30px 20px; 
+              text-align: center; 
+              border-bottom: 1px solid #e5e5e5;
+            }
+            .logo { 
+              font-size: 24px; 
+              font-weight: bold; 
+              color: #2c3e50; 
+              margin-bottom: 8px;
+            }
+            .content { 
+              padding: 40px 30px; 
+            }
+            .otp-box { 
+              background-color: #f8f9fa; 
+              border: 2px solid #3498db; 
+              border-radius: 8px; 
+              padding: 30px; 
+              text-align: center; 
+              margin: 30px 0;
+            }
+            .otp-code { 
+              font-size: 32px; 
+              font-weight: bold; 
+              color: #3498db; 
+              letter-spacing: 8px; 
+              font-family: 'Courier New', monospace;
+            }
+            .warning { 
+              color: #e74c3c; 
+              font-size: 14px; 
+              margin-top: 20px;
+            }
+            .footer { 
+              background-color: #2c3e50; 
+              color: #ecf0f1; 
+              padding: 30px; 
+              text-align: center; 
+              font-size: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="email-container">
+            <div class="logo-section">
+              <div class="logo">${brandName}</div>
+            </div>
+            <div class="content">
+              <h2>Password Reset Request</h2>
+              <p>You requested to reset your password. Use the following OTP code to complete the process:</p>
+              <div class="otp-box">
+                <div class="otp-code">${otp}</div>
+              </div>
+              <p>This code will expire in 10 minutes.</p>
+              <div class="warning">
+                <strong>⚠️ Security Notice:</strong> If you didn't request this password reset, please ignore this email or contact support.
+              </div>
+            </div>
+            <div class="footer">
+              <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">${brandName}</div>
+              <div style="color: #95a5a6;">This is an automated security email. Please do not reply.</div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ OTP email sent successfully:', info.messageId);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      message: 'OTP email sent successfully'
+    };
+  } catch (error) {
+    console.error('❌ Error sending OTP email:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to send OTP email'
+    };
+  }
+}
+
 module.exports = {
   sendPDFReport,
   sendRegistrationEmail,
+  sendOTPEmail,
   createTransporter
 };
 

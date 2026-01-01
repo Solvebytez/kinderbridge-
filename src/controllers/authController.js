@@ -7,13 +7,17 @@ const {
   unauthorizedResponse,
   forbiddenResponse,
 } = require("../utils/responseHelper");
-const { sendRegistrationEmail } = require("../services/emailService");
+const { sendWelcomeEmail } = require("../services/sesEmailService");
 
 // JWT Secrets (from environment variables)
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'your-super-secret-jwt-access-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-super-secret-jwt-refresh-key-change-in-production';
-const JWT_ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
+const JWT_ACCESS_SECRET =
+  process.env.JWT_ACCESS_SECRET ||
+  "your-super-secret-jwt-access-key-change-in-production";
+const JWT_REFRESH_SECRET =
+  process.env.JWT_REFRESH_SECRET ||
+  "your-super-secret-jwt-refresh-key-change-in-production";
+const JWT_ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || "15m";
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || "30d";
 
 /**
  * Generate Access Token (short-lived, 15 minutes)
@@ -22,11 +26,11 @@ const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
  */
 const generateAccessToken = (user) => {
   return jwt.sign(
-    { 
-      userId: user._id || user.id, 
-      email: user.email, 
+    {
+      userId: user._id || user.id,
+      email: user.email,
       userType: user.userType,
-      type: 'access'
+      type: "access",
     },
     JWT_ACCESS_SECRET,
     { expiresIn: JWT_ACCESS_EXPIRES_IN }
@@ -40,11 +44,11 @@ const generateAccessToken = (user) => {
  */
 const generateRefreshToken = (user) => {
   return jwt.sign(
-    { 
-      userId: user._id || user.id, 
-      email: user.email, 
+    {
+      userId: user._id || user.id,
+      email: user.email,
       userType: user.userType,
-      type: 'refresh'
+      type: "refresh",
     },
     JWT_REFRESH_SECRET,
     { expiresIn: JWT_REFRESH_EXPIRES_IN }
@@ -173,17 +177,22 @@ class AuthController {
         );
       }
 
-      // Send welcome email (non-blocking - don't fail registration if email fails)
-      console.log("🔵 [REGISTER] Sending welcome email...");
+      // Send welcome email via Amazon SES (non-blocking - don't fail registration if email fails)
+      console.log("🔵 [REGISTER] Sending welcome email via Amazon SES...");
       try {
-        const emailResult = await sendRegistrationEmail(
+        const emailResult = await sendWelcomeEmail(
           user.email,
-          user.firstName || 'User'
+          user.firstName || "User"
         );
         if (emailResult.success) {
-          console.log("✅ [REGISTER] Welcome email sent successfully");
+          console.log(
+            "✅ [REGISTER] Welcome email sent successfully via Amazon SES"
+          );
         } else {
-          console.warn("⚠️ [REGISTER] Welcome email failed to send:", emailResult.message || emailResult.error);
+          console.warn(
+            "⚠️ [REGISTER] Welcome email failed to send:",
+            emailResult.message || emailResult.error
+          );
           // Continue with registration even if email fails
         }
       } catch (emailError) {
@@ -380,70 +389,85 @@ class AuthController {
    * @returns {Object} Response with new access token and user data
    */
   async refreshToken(refreshToken) {
-    console.log('🔐 [AUTH_CONTROLLER] refreshToken() called');
-    console.log('🔐 [AUTH_CONTROLLER] Refresh token length:', refreshToken?.length || 0);
-    
+    console.log("🔐 [AUTH_CONTROLLER] refreshToken() called");
+    console.log(
+      "🔐 [AUTH_CONTROLLER] Refresh token length:",
+      refreshToken?.length || 0
+    );
+
     try {
       if (!refreshToken) {
-        console.log('❌ [AUTH_CONTROLLER] No refresh token provided');
+        console.log("❌ [AUTH_CONTROLLER] No refresh token provided");
         return unauthorizedResponse("Refresh token is required");
       }
 
       // Verify refresh token
       let decoded;
       try {
-        console.log('🔐 [AUTH_CONTROLLER] Verifying refresh token...');
+        console.log("🔐 [AUTH_CONTROLLER] Verifying refresh token...");
         decoded = verifyRefreshToken(refreshToken);
-        console.log('✅ [AUTH_CONTROLLER] Token verified successfully:', {
+        console.log("✅ [AUTH_CONTROLLER] Token verified successfully:", {
           userId: decoded.userId,
           email: decoded.email,
           userType: decoded.userType,
-          type: decoded.type
+          type: decoded.type,
         });
       } catch (error) {
-        console.error("❌ [AUTH_CONTROLLER] Invalid refresh token:", error.message);
+        console.error(
+          "❌ [AUTH_CONTROLLER] Invalid refresh token:",
+          error.message
+        );
         return unauthorizedResponse("Invalid or expired refresh token");
       }
 
       // Check token type
       if (decoded.type !== "refresh") {
-        console.log('❌ [AUTH_CONTROLLER] Invalid token type:', decoded.type);
+        console.log("❌ [AUTH_CONTROLLER] Invalid token type:", decoded.type);
         return unauthorizedResponse("Invalid token type");
       }
 
       // Get user from database
-      console.log('🔐 [AUTH_CONTROLLER] Fetching user from database, userId:', decoded.userId);
+      console.log(
+        "🔐 [AUTH_CONTROLLER] Fetching user from database, userId:",
+        decoded.userId
+      );
       const user = await this.userModel.getUserById(decoded.userId);
       if (!user) {
-        console.log('❌ [AUTH_CONTROLLER] User not found in database, userId:', decoded.userId);
+        console.log(
+          "❌ [AUTH_CONTROLLER] User not found in database, userId:",
+          decoded.userId
+        );
         return notFoundResponse("User not found");
       }
 
-      console.log('✅ [AUTH_CONTROLLER] User found:', {
+      console.log("✅ [AUTH_CONTROLLER] User found:", {
         _id: user._id,
         email: user.email,
         userType: user.userType,
-        firstName: user.firstName
+        firstName: user.firstName,
       });
 
       // Generate new access token
-      console.log('🔐 [AUTH_CONTROLLER] Generating new access token...');
+      console.log("🔐 [AUTH_CONTROLLER] Generating new access token...");
       const newAccessToken = generateAccessToken(user);
-      console.log('✅ [AUTH_CONTROLLER] Access token generated, length:', newAccessToken.length);
+      console.log(
+        "✅ [AUTH_CONTROLLER] Access token generated, length:",
+        newAccessToken.length
+      );
 
       // Return new access token - will be set as cookie by route handler
       const response = successResponse(
         { user, accessToken: newAccessToken },
         "Token refreshed successfully"
       );
-      
-      console.log('✅ [AUTH_CONTROLLER] Refresh token response prepared:', {
+
+      console.log("✅ [AUTH_CONTROLLER] Refresh token response prepared:", {
         statusCode: response.statusCode,
         success: response.body.success,
         hasUser: !!response.body.data?.user,
-        hasAccessToken: !!response.body.data?.accessToken
+        hasAccessToken: !!response.body.data?.accessToken,
       });
-      
+
       return response;
     } catch (error) {
       console.error("❌ [AUTH_CONTROLLER] Token refresh error:", error);
