@@ -153,6 +153,19 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: {
     type: Date,
     default: null
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    default: null,
+    select: false // Don't return token by default
+  },
+  emailVerificationExpires: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true, // Automatically adds createdAt and updatedAt
