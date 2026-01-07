@@ -25,6 +25,8 @@ function getEmailConfig() {
 function getEmailFrom() {
   const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'noreply@kinderbridge.com';
   const fromName = process.env.SMTP_FROM_NAME || 'KinderBridge';
+  // Use proper format: "Display Name" <email@domain.com>
+  // This helps with email deliverability
   return `"${fromName}" <${fromEmail}>`;
 }
 
@@ -652,7 +654,7 @@ async function sendWelcomeEmail(email, firstName = "User") {
     const firstNameValue = firstName || "User";
     const brandName = process.env.SMTP_FROM_NAME || "KinderBridge";
     const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_DEV_URL || "https://kinderbridge.ca";
-    const subject = `Welcome to ${brandName}, ${firstNameValue}! 🎉`;
+    const subject = `Welcome to ${brandName}, ${firstNameValue}!`;
 
     // HTML welcome email template
     const htmlTemplate = `
