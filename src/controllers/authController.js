@@ -853,6 +853,31 @@ class AuthController {
       await user.save();
 
       console.log("✅ [AUTH_CONTROLLER] Email verified successfully");
+
+      // Send welcome email after successful verification (non-blocking)
+      console.log("🔵 [AUTH_CONTROLLER] Sending welcome email...");
+      try {
+        const emailResult = await sendWelcomeEmail(
+          user.email,
+          user.firstName || "User"
+        );
+        if (emailResult.success) {
+          console.log("✅ [AUTH_CONTROLLER] Welcome email sent successfully");
+        } else {
+          console.warn(
+            "⚠️ [AUTH_CONTROLLER] Welcome email failed to send:",
+            emailResult.message || emailResult.error
+          );
+          // Continue even if email fails - verification is complete
+        }
+      } catch (emailError) {
+        console.error(
+          "❌ [AUTH_CONTROLLER] Error sending welcome email:",
+          emailError
+        );
+        // Continue even if email fails - verification is complete
+      }
+
       return successResponse(
         { email: user.email, verified: true },
         "Email verified successfully"
