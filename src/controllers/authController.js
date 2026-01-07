@@ -8,7 +8,10 @@ const {
   unauthorizedResponse,
   forbiddenResponse,
 } = require("../utils/responseHelper");
-const { sendWelcomeEmail, sendPasswordResetEmail } = require("../services/emailService");
+const {
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+} = require("../services/emailService");
 
 // JWT Secrets (from environment variables)
 const JWT_ACCESS_SECRET =
@@ -186,9 +189,7 @@ class AuthController {
           user.firstName || "User"
         );
         if (emailResult.success) {
-          console.log(
-            "✅ [REGISTER] Welcome email sent successfully via SMTP"
-          );
+          console.log("✅ [REGISTER] Welcome email sent successfully via SMTP");
         } else {
           console.warn(
             "⚠️ [REGISTER] Welcome email failed to send:",
@@ -663,7 +664,10 @@ class AuthController {
         "If an account exists with that email, a password reset link has been sent."
       );
     } catch (error) {
-      console.error("❌ [AUTH_CONTROLLER] Password reset request error:", error);
+      console.error(
+        "❌ [AUTH_CONTROLLER] Password reset request error:",
+        error
+      );
       // Still return success to prevent information leakage
       return successResponse(
         null,
