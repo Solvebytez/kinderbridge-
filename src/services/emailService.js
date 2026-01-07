@@ -695,116 +695,101 @@ async function sendWelcomeEmail(email, firstName = "User") {
     const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_DEV_URL || "https://kinderbridge.ca";
     const subject = `Welcome to the Family, ${firstNameValue}!`;
 
-    // HTML welcome email template matching the exact design
+    // HTML welcome email template with branded design
+    // Note: Gradient text may not work in all email clients (especially Outlook)
+    // Fallback to solid color is provided
     const htmlTemplate = `
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to ${brandName}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to ${brandName}</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+        .wrapper { width: 100%; table-layout: fixed; background-color: #f4f7f6; padding-bottom: 40px; }
+        .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-spacing: 0; color: #333333; border-radius: 8px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header { background-color: #ffffff; padding: 30px; text-align: center; border-bottom: 1px solid #eeeeee; }
+        .content { padding: 40px 30px; line-height: 1.6; font-size: 16px; }
+        
+        /* BRANDED GRADIENT BUTTON */
+        .cta-button { 
+            background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%); 
+            background-color: #6a11cb; /* Fallback for older email clients */
+            color: #ffffff !important; 
+            padding: 15px 35px; 
+            text-decoration: none; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            display: inline-block; 
+            margin: 25px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* BRANDED GRADIENT TEXT FOR NAME - with fallback */
+        .name-highlight {
+            background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: #6a11cb; /* Fallback for email clients that don't support gradient text */
+            font-weight: bold;
+            font-size: 28px;
+        }
+
+        .footer { padding: 20px; text-align: center; font-size: 12px; color: #999999; }
+        h1 { color: #2c3e50; font-size: 24px; margin-top: 0; margin-bottom: 10px; }
+        
+        /* BRANDED FEATURE BOX */
+        .feature-box { background-color: #f9f9fb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 5px solid #6a11cb; }
+    </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #ffffff;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #ffffff;">
-    <tr>
-      <td style="padding: 40px 20px;">
-        <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-          <!-- Logo Header -->
-          <tr>
-            <td style="padding: 0 0 40px 0; text-align: center;">
-              <table role="presentation" style="margin: 0 auto; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 0 10px 0 0; vertical-align: middle;">
-                    <!-- Logo Image Placeholder - Replace with actual logo URL -->
-                    <img src="${frontendUrl}/logo.png" alt="${brandName} Logo" style="display: block; max-width: 40px; height: auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
-                    <span style="display: none; width: 40px; height: 40px; background-color: #667eea; border-radius: 4px;"></span>
-                  </td>
-                  <td style="vertical-align: middle;">
-                    <span style="font-size: 20px; font-weight: 600; color: #333333;">${brandName} Logo</span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Welcome Heading -->
-          <tr>
-            <td style="padding: 0 0 15px 0;">
-              <h1 style="margin: 0; padding: 0; color: #333333; font-size: 36px; font-weight: 700; line-height: 1.2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Welcome to the Family,</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 0 25px 0;">
-              <h2 style="margin: 0; padding: 0; color: #667eea; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${firstNameValue.toUpperCase()}!</h2>
-            </td>
-          </tr>
-          
-          <!-- Introduction Paragraph -->
-          <tr>
-            <td style="padding: 0 0 35px 0;">
-              <p style="margin: 0; padding: 0; color: #333333; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-                We're so excited to have you on board. <strong style="font-weight: 600;">${brandName}</strong> was built with one goal in mind: to bridge the gap between parents and the perfect care for their little ones.
-              </p>
-            </td>
-          </tr>
-          
-          <!-- Phase 1 Information Block -->
-          <tr>
-            <td style="padding: 0 0 30px 0;">
-              <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f5f5f5; border-left: 4px solid #667eea;">
-                <tr>
-                  <td style="padding: 25px 20px;">
-                    <h3 style="margin: 0 0 12px 0; padding: 0; color: #333333; font-size: 18px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">What to expect from Phase 1:</h3>
-                    <p style="margin: 0; padding: 0; color: #333333; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-                      Browse our complete directory of local daycares for free—no strings attached.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Phase 2 Announcement -->
-          <tr>
-            <td style="padding: 0 0 40px 0;">
-              <p style="margin: 0; padding: 0; color: #333333; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-                But wait, it gets better. Since you're one of our first subscribers, you've just secured a spot on the <strong style="font-weight: 600;">Priority Beta List</strong> for Phase 2: Our AI-Powered Daycare Assistant.
-              </p>
-            </td>
-          </tr>
-          
-          <!-- CTA Button with Gradient -->
-          <tr>
-            <td style="padding: 0 0 40px 0; text-align: center;">
-              <a href="${frontendUrl}/search" style="display: inline-block; padding: 18px 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">START YOUR SEARCH NOW</a>
-            </td>
-          </tr>
-          
-          <!-- Footer Message -->
-          <tr>
-            <td style="padding: 0 0 30px 0;">
-              <p style="margin: 0; padding: 0; color: #333333; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-                Keep an eye out for our "Phase 2" sneak peek coming soon. You don't want to miss the automation that will change the way you search and find the perfect daycare for your family.
-              </p>
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 50px 0 0 0; border-top: 1px solid #e5e5e5; text-align: center;">
-              <p style="margin: 0 0 10px 0; padding: 0; color: #666666; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-                Best regards,<br>
-                <strong style="color: #333333; font-weight: 600;">The ${brandName} Team</strong>
-              </p>
-              <p style="margin: 10px 0 0 0; padding: 0; color: #999999; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-                © ${new Date().getFullYear()} ${brandName}. All rights reserved.
-              </p>
-            </td>
-          </tr>
+<body>
+    <center class="wrapper">
+        <table class="main" width="100%" cellpadding="0" cellspacing="0">
+            <!-- HEADER -->
+            <tr>
+                <td class="header">
+                    <!-- Logo Image -->
+                    <img src="${frontendUrl}/logo.png" alt="${brandName} Logo" width="200" style="display: block; margin: 0 auto; max-width: 200px; height: auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <!-- Text fallback if image doesn't load -->
+                    <div style="font-size: 24px; font-weight: bold; color: #2c3e50; display: none; margin: 0 auto;">${brandName}</div>
+                </td>
+            </tr>
+            <!-- CONTENT -->
+            <tr>
+                <td class="content">
+                    <h1>Welcome to the Family,</h1>
+                    <span class="name-highlight">${firstNameValue.toUpperCase()}!</span>
+                    
+                    <p style="margin-top: 20px;">We're so excited to have you on board. <strong>${brandName}</strong> was built with one goal in mind: to bridge the gap between parents and the perfect care for their little ones.</p>
+                    
+                    <div class="feature-box">
+                        <strong style="color: #2c3e50;">What to expect from Phase 1:</strong><br>
+                        <p style="margin: 5px 0 0 0;">Browse our complete directory of local daycares for free—no strings attached.</p>
+                    </div>
+
+                    <p>But wait, it gets better. Since you're one of our first subscribers, you've just secured a spot on the <strong>Priority Beta List</strong> for Phase 2: Our AI-Powered Daycare Assistant.</p>
+                    
+                    <center>
+                        <a href="${frontendUrl}/search" class="cta-button">Start Your Search Now</a>
+                    </center>
+
+                    <p>Keep an eye out for our "Phase 2" sneak peek coming soon. You don't want to miss the automation that will change the way you search and find daycare for your kid!</p>
+                    
+                    <p style="margin-top: 30px;">Cheers,<br><strong>Abhishek & The ${brandName} Team</strong></p>
+                </td>
+            </tr>
+            <!-- FOOTER -->
+            <tr>
+                <td class="footer">
+                    &copy; ${new Date().getFullYear()} ${brandName} Inc. | Toronto, Ontario<br>
+                    <a href="${frontendUrl}/contact" style="color: #999999; text-decoration: none;">Contact Us</a>
+                </td>
+            </tr>
         </table>
-      </td>
-    </tr>
-  </table>
+    </center>
 </body>
 </html>
     `;
@@ -821,12 +806,12 @@ But wait, it gets better. Since you're one of our first subscribers, you've just
 
 Start your search now: ${frontendUrl}/search
 
-Keep an eye out for our "Phase 2" sneak peek coming soon. You don't want to miss the automation that will change the way you search and find the perfect daycare for your family.
+Keep an eye out for our "Phase 2" sneak peek coming soon. You don't want to miss the automation that will change the way you search and find daycare for your kid!
 
-Best regards,
-The ${brandName} Team
+Cheers,
+Abhishek & The ${brandName} Team
 
-© ${new Date().getFullYear()} ${brandName}. All rights reserved.`;
+© ${new Date().getFullYear()} ${brandName} Inc. | Toronto, Ontario`;
 
     const mailOptions = {
       from: getEmailFrom(),
