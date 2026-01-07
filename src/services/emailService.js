@@ -61,10 +61,39 @@ async function sendPDFReport(email, pdfBuffer, userName = 'User') {
       };
     }
     
+    const brandName = process.env.SMTP_FROM_NAME || 'Daycare Concierge';
+    const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_DEV_URL || 'https://kinderbridge.ca';
+    
+    // Plain text version for better deliverability
+    const textTemplate = `Your Daycare Full Report - ${brandName}
+
+Dear ${userName},
+
+Thank you for your purchase! Your comprehensive Daycare Full Report is attached to this email.
+
+The report includes:
+- Complete list of all daycares
+- Detailed information for each daycare
+- Ratings, pricing, and contact details
+- Features and amenities
+- Location and address information
+
+We hope this report helps you find the perfect daycare for your child!
+
+If you have any questions, please don't hesitate to contact us.
+
+Best regards,
+The ${brandName} Team
+
+© ${new Date().getFullYear()} ${brandName}. All rights reserved.
+
+This is an automated email. Please do not reply to this message.`;
+
     const mailOptions = {
       from: getEmailFrom(),
       to: email,
-      subject: 'Your Daycare Full Report - Daycare Concierge',
+      subject: `Your Daycare Full Report - ${brandName}`,
+      text: textTemplate, // Plain text version
       html: `
         <!DOCTYPE html>
         <html>
@@ -81,7 +110,7 @@ async function sendPDFReport(email, pdfBuffer, userName = 'User') {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🎉 Your Daycare Report is Ready!</h1>
+              <h1>Your Daycare Report is Ready</h1>
             </div>
             <div class="content">
               <p>Dear ${userName},</p>
@@ -102,11 +131,11 @@ async function sendPDFReport(email, pdfBuffer, userName = 'User') {
               <p>If you have any questions, please don't hesitate to contact us.</p>
               
               <p>Best regards,<br>
-              <strong>The Daycare Concierge Team</strong></p>
+              <strong>The ${brandName} Team</strong></p>
             </div>
             <div class="footer">
               <p>This is an automated email. Please do not reply to this message.</p>
-              <p>&copy; ${new Date().getFullYear()} Daycare Concierge. All rights reserved.</p>
+              <p>&copy; ${new Date().getFullYear()} ${brandName}. All rights reserved.</p>
             </div>
           </div>
         </body>
@@ -118,7 +147,17 @@ async function sendPDFReport(email, pdfBuffer, userName = 'User') {
           content: pdfBuffer,
           contentType: 'application/pdf'
         }
-      ]
+      ],
+      // Add headers to improve deliverability
+      headers: {
+        'X-Priority': '1',
+        'X-MSMail-Priority': 'High',
+        'Importance': 'high',
+        'List-Unsubscribe': `<${frontendUrl}/contact>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+      // Add reply-to for better sender reputation
+      replyTo: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
     };
     
     const info = await transporter.sendMail(mailOptions);
@@ -654,80 +693,142 @@ async function sendWelcomeEmail(email, firstName = "User") {
     const firstNameValue = firstName || "User";
     const brandName = process.env.SMTP_FROM_NAME || "KinderBridge";
     const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_DEV_URL || "https://kinderbridge.ca";
-    const subject = `Welcome to ${brandName}, ${firstNameValue}!`;
+    const subject = `Welcome to the Family, ${firstNameValue}!`;
 
-    // HTML welcome email template
+    // HTML welcome email template with branded design
+    // Note: Gradient text may not work in all email clients (especially Outlook)
+    // Fallback to solid color is provided
     const htmlTemplate = `
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to ${brandName}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to ${brandName}</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+        .wrapper { width: 100%; table-layout: fixed; background-color: #f4f7f6; padding-bottom: 40px; }
+        .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-spacing: 0; color: #333333; border-radius: 8px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header { background-color: #ffffff; padding: 30px; text-align: center; border-bottom: 1px solid #eeeeee; }
+        .content { padding: 40px 30px; line-height: 1.6; font-size: 16px; }
+        
+        /* BRANDED GRADIENT BUTTON */
+        .cta-button { 
+            background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%); 
+            background-color: #6a11cb; /* Fallback for older email clients */
+            color: #ffffff !important; 
+            padding: 15px 35px; 
+            text-decoration: none; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            display: inline-block; 
+            margin: 25px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* BRANDED GRADIENT TEXT FOR NAME - with fallback */
+        .name-highlight {
+            background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: #6a11cb; /* Fallback for email clients that don't support gradient text */
+            font-weight: bold;
+            font-size: 28px;
+        }
+
+        .footer { padding: 20px; text-align: center; font-size: 12px; color: #999999; }
+        h1 { color: #2c3e50; font-size: 24px; margin-top: 0; margin-bottom: 10px; }
+        
+        /* BRANDED FEATURE BOX */
+        .feature-box { background-color: #f9f9fb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 5px solid #6a11cb; }
+    </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
-    <tr>
-      <td style="padding: 20px 0;">
-        <table role="presentation" style="width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Welcome to ${brandName}! 🎉</h1>
-            </td>
-          </tr>
-          
-          <!-- Content -->
-          <tr>
-            <td style="padding: 40px 30px;">
-              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Hello, ${firstNameValue}!</h2>
-              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                Thank you for joining our ${brandName} community! We're thrilled to have you on board.
-              </p>
-              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                Your account has been successfully created. You can now start exploring our platform and find the perfect daycare for your needs.
-              </p>
-              
-              <!-- CTA Button -->
-              <table role="presentation" style="width: 100%; margin: 30px 0;">
-                <tr>
-                  <td style="text-align: center;">
-                    <a href="${frontendUrl}/search" style="display: inline-block; padding: 14px 30px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">Get Started</a>
-                  </td>
-                </tr>
-              </table>
-              
-              <p style="margin: 20px 0 0 0; color: #666666; font-size: 14px; line-height: 1.6;">
-                If you have any questions, feel free to reach out to our support team. We're here to help!
-              </p>
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef;">
-              <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">
-                Best regards,<br>
-                <strong style="color: #333333;">The ${brandName} Team</strong>
-              </p>
-              <p style="margin: 10px 0 0 0; color: #999999; font-size: 12px;">
-                © ${new Date().getFullYear()} ${brandName}. All rights reserved.
-              </p>
-            </td>
-          </tr>
+<body>
+    <center class="wrapper">
+        <table class="main" width="100%" cellpadding="0" cellspacing="0">
+            <!-- HEADER -->
+            <tr>
+                <td class="header">
+                    <!-- Logo Image -->
+                    <img src="${frontendUrl}/logo.png" alt="${brandName} Logo" width="200" style="display: block; margin: 0 auto; max-width: 200px; height: auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <!-- Text fallback if image doesn't load -->
+                    <div style="font-size: 24px; font-weight: bold; color: #2c3e50; display: none; margin: 0 auto;">${brandName}</div>
+                </td>
+            </tr>
+            <!-- CONTENT -->
+            <tr>
+                <td class="content">
+                    <h1>Welcome to the Family,</h1>
+                    <span class="name-highlight">${firstNameValue.toUpperCase()}!</span>
+                    
+                    <p style="margin-top: 20px;">We're so excited to have you on board. <strong>${brandName}</strong> was built with one goal in mind: to bridge the gap between parents and the perfect care for their little ones.</p>
+                    
+                    <div class="feature-box">
+                        <strong style="color: #2c3e50;">What to expect from Phase 1:</strong><br>
+                        <p style="margin: 5px 0 0 0;">Browse our complete directory of local daycares for free—no strings attached.</p>
+                    </div>
+
+                    <p>But wait, it gets better. Since you're one of our first subscribers, you've just secured a spot on the <strong>Priority Beta List</strong> for Phase 2: Our AI-Powered Daycare Assistant.</p>
+                    
+                    <center>
+                        <a href="${frontendUrl}/search" class="cta-button">Start Your Search Now</a>
+                    </center>
+
+                    <p>Keep an eye out for our "Phase 2" sneak peek coming soon. You don't want to miss the automation that will change the way you search and find daycare for your kid!</p>
+                    
+                    <p style="margin-top: 30px;">Cheers,<br><strong>Abhishek & The ${brandName} Team</strong></p>
+                </td>
+            </tr>
+            <!-- FOOTER -->
+            <tr>
+                <td class="footer">
+                    &copy; ${new Date().getFullYear()} ${brandName} Inc. | Toronto, Ontario<br>
+                    <a href="${frontendUrl}/contact" style="color: #999999; text-decoration: none;">Contact Us</a>
+                </td>
+            </tr>
         </table>
-      </td>
-    </tr>
-  </table>
+    </center>
 </body>
 </html>
     `;
+
+    // Plain text version for better deliverability
+    const textTemplate = `Welcome to the Family, ${firstNameValue.toUpperCase()}!
+
+We're so excited to have you on board. ${brandName} was built with one goal in mind: to bridge the gap between parents and the perfect care for their little ones.
+
+What to expect from Phase 1:
+Browse our complete directory of local daycares for free—no strings attached.
+
+But wait, it gets better. Since you're one of our first subscribers, you've just secured a spot on the Priority Beta List for Phase 2: Our AI-Powered Daycare Assistant.
+
+Start your search now: ${frontendUrl}/search
+
+Keep an eye out for our "Phase 2" sneak peek coming soon. You don't want to miss the automation that will change the way you search and find daycare for your kid!
+
+Cheers,
+Abhishek & The ${brandName} Team
+
+© ${new Date().getFullYear()} ${brandName} Inc. | Toronto, Ontario`;
 
     const mailOptions = {
       from: getEmailFrom(),
       to: email.trim(),
       subject: subject,
+      text: textTemplate, // Plain text version
       html: htmlTemplate,
+      // Add headers to improve deliverability
+      headers: {
+        'X-Priority': '1',
+        'X-MSMail-Priority': 'High',
+        'Importance': 'high',
+        'List-Unsubscribe': `<${frontendUrl}/contact>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+      // Add reply-to for better sender reputation
+      replyTo: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
     };
 
     console.log("🔵 [EMAIL] Sending welcome email...");
@@ -875,11 +976,42 @@ async function sendPasswordResetEmail(email, firstName = "User", resetToken) {
 </html>
     `;
 
+    // Plain text version for better deliverability
+    const textTemplate = `Reset Your Password - ${brandName}
+
+Hello, ${firstNameValue}!
+
+We received a request to reset your password for your ${brandName} account.
+
+Click the link below to reset your password. This link will expire in 1 hour for security reasons.
+
+${resetUrl}
+
+If the link doesn't work, copy and paste it into your browser.
+
+If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
+
+Best regards,
+The ${brandName} Team
+
+© ${new Date().getFullYear()} ${brandName}. All rights reserved.`;
+
     const mailOptions = {
       from: getEmailFrom(),
       to: email.trim(),
       subject: subject,
+      text: textTemplate, // Plain text version
       html: htmlTemplate,
+      // Add headers to improve deliverability
+      headers: {
+        'X-Priority': '1',
+        'X-MSMail-Priority': 'High',
+        'Importance': 'high',
+        'List-Unsubscribe': `<${frontendUrl}/contact>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+      // Add reply-to for better sender reputation
+      replyTo: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
     };
 
     console.log("🔵 [EMAIL] Sending password reset email...");
@@ -904,12 +1036,195 @@ async function sendPasswordResetEmail(email, firstName = "User", resetToken) {
   }
 }
 
+/**
+ * Send email verification email
+ * @param {string} email - User email address
+ * @param {string} firstName - User's first name
+ * @param {string} verificationToken - Email verification token
+ * @returns {Promise<Object>} Result object with success status
+ */
+async function sendVerificationEmail(email, firstName = "User", verificationToken) {
+  try {
+    console.log("🔵 [EMAIL] sendVerificationEmail called");
+    console.log(`🔵 [EMAIL] Email: ${email}`);
+    console.log(`🔵 [EMAIL] First Name: ${firstName}`);
+    console.log(`🔵 [EMAIL] Verification Token: ${verificationToken ? "Present" : "Missing"}`);
+
+    // Validate email
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      console.error("❌ [EMAIL] Invalid email address provided:", email);
+      return {
+        success: false,
+        message: "Invalid email address",
+      };
+    }
+
+    // Validate verification token
+    if (!verificationToken || typeof verificationToken !== "string") {
+      console.error("❌ [EMAIL] Invalid verification token provided");
+      return {
+        success: false,
+        message: "Verification token is required",
+      };
+    }
+
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log("⚠️ [EMAIL] Email transporter not available. Skipping verification email.");
+      return {
+        success: false,
+        message: "Email service not configured",
+      };
+    }
+
+    const firstNameValue = firstName || "User";
+    const brandName = process.env.SMTP_FROM_NAME || "KinderBridge";
+    const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_DEV_URL || "https://kinderbridge.ca";
+    const subject = `Verify Your Email - ${brandName}`;
+    const verificationUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+
+    // HTML email verification template
+    const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Your Email</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
+    <tr>
+      <td style="padding: 20px 0;">
+        <table role="presentation" style="width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Verify Your Email</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Hello, ${firstNameValue}!</h2>
+              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                Thank you for registering with ${brandName}! To complete your registration, please verify your email address.
+              </p>
+              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                Click the button below to verify your email address. This link will expire in 24 hours for security reasons.
+              </p>
+              
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; margin: 30px 0;">
+                <tr>
+                  <td style="text-align: center;">
+                    <a href="${verificationUrl}" style="display: inline-block; padding: 14px 30px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">Verify Email</a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 20px 0 0 0; color: #666666; font-size: 14px; line-height: 1.6;">
+                If the button doesn't work, copy and paste this link into your browser:
+              </p>
+              <p style="margin: 10px 0 0 0; color: #667eea; font-size: 12px; line-height: 1.6; word-break: break-all;">
+                ${verificationUrl}
+              </p>
+              
+              <p style="margin: 30px 0 0 0; color: #999999; font-size: 14px; line-height: 1.6;">
+                If you didn't create an account with ${brandName}, please ignore this email.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef;">
+              <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">
+                Best regards,<br>
+                <strong style="color: #333333;">The ${brandName} Team</strong>
+              </p>
+              <p style="margin: 10px 0 0 0; color: #999999; font-size: 12px;">
+                © ${new Date().getFullYear()} ${brandName}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    // Plain text version for better deliverability
+    const textTemplate = `Verify Your Email - ${brandName}
+
+Hello, ${firstNameValue}!
+
+Thank you for registering with ${brandName}! To complete your registration, please verify your email address.
+
+Click the link below to verify your email address. This link will expire in 24 hours for security reasons.
+
+${verificationUrl}
+
+If the link doesn't work, copy and paste it into your browser.
+
+If you didn't create an account with ${brandName}, please ignore this email.
+
+Best regards,
+The ${brandName} Team
+
+© ${new Date().getFullYear()} ${brandName}. All rights reserved.`;
+
+    const mailOptions = {
+      from: getEmailFrom(),
+      to: email.trim(),
+      subject: subject,
+      text: textTemplate, // Plain text version
+      html: htmlTemplate,
+      // Add headers to improve deliverability
+      headers: {
+        'X-Priority': '1',
+        'X-MSMail-Priority': 'High',
+        'Importance': 'high',
+        'List-Unsubscribe': `<${frontendUrl}/contact>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+      // Add reply-to for better sender reputation
+      replyTo: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
+    };
+
+    console.log("🔵 [EMAIL] Sending verification email...");
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("✅ [EMAIL] Verification email sent successfully");
+    console.log(`✅ [EMAIL] Message ID: ${info.messageId}`);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      message: "Verification email sent successfully",
+    };
+  } catch (error) {
+    console.error("❌ [EMAIL] Exception in sendVerificationEmail:");
+    console.error(`❌ [EMAIL] Error: ${error.message || "Unknown error"}`);
+    console.error(`❌ [EMAIL] Stack:`, error.stack);
+    return {
+      success: false,
+      error: error.message || "Failed to send verification email",
+    };
+  }
+}
+
 module.exports = {
   sendPDFReport,
   sendRegistrationEmail,
   sendOTPEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
+  sendVerificationEmail,
   createTransporter
 };
 

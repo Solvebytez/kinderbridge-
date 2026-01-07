@@ -487,4 +487,57 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// Verify email with token
+router.get('/verify-email/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: 'Verification token is required'
+      });
+    }
+    
+    const AuthController = require('../controllers/authController');
+    const authController = new AuthController(req.db);
+    
+    const result = await authController.verifyEmail(token);
+    res.status(result.statusCode).json(result.body);
+  } catch (error) {
+    console.error('Verify email error:', error);
+    res.status(400).json({
+      success: false,
+      error: 'Invalid or expired verification token'
+    });
+  }
+});
+
+// Resend verification email
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
+    
+    const AuthController = require('../controllers/authController');
+    const authController = new AuthController(req.db);
+    
+    const result = await authController.resendVerificationEmail(email);
+    res.status(result.statusCode).json(result.body);
+  } catch (error) {
+    console.error('Resend verification email error:', error);
+    // Still return success to prevent email enumeration
+    res.status(200).json({
+      success: true,
+      message: 'If an account exists with that email, a verification email has been sent.'
+    });
+  }
+});
+
 module.exports = router;
