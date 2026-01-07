@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const {
   successResponse,
   errorResponse,
@@ -7,7 +8,7 @@ const {
   unauthorizedResponse,
   forbiddenResponse,
 } = require("../utils/responseHelper");
-const { sendWelcomeEmail } = require("../services/sesEmailService");
+const { sendWelcomeEmail, sendPasswordResetEmail } = require("../services/emailService");
 
 // JWT Secrets (from environment variables)
 const JWT_ACCESS_SECRET =
@@ -177,8 +178,8 @@ class AuthController {
         );
       }
 
-      // Send welcome email via Amazon SES (non-blocking - don't fail registration if email fails)
-      console.log("🔵 [REGISTER] Sending welcome email via Amazon SES...");
+      // Send welcome email via SMTP (non-blocking - don't fail registration if email fails)
+      console.log("🔵 [REGISTER] Sending welcome email via SMTP...");
       try {
         const emailResult = await sendWelcomeEmail(
           user.email,
@@ -186,7 +187,7 @@ class AuthController {
         );
         if (emailResult.success) {
           console.log(
-            "✅ [REGISTER] Welcome email sent successfully via Amazon SES"
+            "✅ [REGISTER] Welcome email sent successfully via SMTP"
           );
         } else {
           console.warn(
@@ -568,6 +569,194 @@ class AuthController {
     } catch (error) {
       console.error("User search error:", error);
       return errorResponse(error.message, 500);
+    }
+  }
+
+  /**
+   * Request password reset - generates token and sends email
+   * @param {string} email - User email address
+   * @returns {Object} Response indicating success (always returns success for security)
+   */
+  async requestPasswordReset(email) {
+    try {
+      console.log("🔐 [AUTH_CONTROLLER] requestPasswordReset() called");
+      console.log("🔐 [AUTH_CONTROLLER] Email:", email);
+
+      if (!email || typeof email !== "string" || !email.includes("@")) {
+        console.log("❌ [AUTH_CONTROLLER] Invalid email provided");
+        // Return success even for invalid email to prevent email enumeration
+        return successResponse(
+          null,
+          "If an account exists with that email, a password reset link has been sent."
+        );
+      }
+
+      // Find user by email (check active users only)
+      const normalizedEmail = email.toLowerCase().trim();
+      const User = require("../schemas/UserSchema");
+      const user = await User.findOne({
+        email: normalizedEmail,
+        isActive: true,
+      }).select("+resetPasswordToken");
+
+      // Always return success to prevent email enumeration attacks
+      // Even if user doesn't exist, return the same message
+      if (!user) {
+        console.log(
+          "⚠️ [AUTH_CONTROLLER] User not found, but returning success for security"
+        );
+        return successResponse(
+          null,
+          "If an account exists with that email, a password reset link has been sent."
+        );
+      }
+
+      // Generate cryptographically secure random token
+      const resetToken = crypto.randomBytes(32).toString("hex");
+
+      // Set token and expiration (1 hour from now)
+      const resetExpires = new Date();
+      resetExpires.setHours(resetExpires.getHours() + 1);
+
+      // Save token to user
+      user.resetPasswordToken = resetToken;
+      user.resetPasswordExpires = resetExpires;
+      await user.save({ validateBeforeSave: false });
+
+      console.log("✅ [AUTH_CONTROLLER] Reset token generated and saved");
+
+      // Send password reset email (non-blocking - don't fail if email fails)
+      try {
+        const emailResult = await sendPasswordResetEmail(
+          user.email,
+          user.firstName || "User",
+          resetToken
+        );
+        if (emailResult.success) {
+          console.log(
+            "✅ [AUTH_CONTROLLER] Password reset email sent successfully"
+          );
+        } else {
+          console.warn(
+            "⚠️ [AUTH_CONTROLLER] Password reset email failed to send:",
+            emailResult.message || emailResult.error
+          );
+          // Clear token if email failed
+          user.resetPasswordToken = null;
+          user.resetPasswordExpires = null;
+          await user.save({ validateBeforeSave: false });
+        }
+      } catch (emailError) {
+        console.error(
+          "❌ [AUTH_CONTROLLER] Error sending password reset email:",
+          emailError
+        );
+        // Clear token if email failed
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        await user.save({ validateBeforeSave: false });
+      }
+
+      // Always return success message (security best practice)
+      return successResponse(
+        null,
+        "If an account exists with that email, a password reset link has been sent."
+      );
+    } catch (error) {
+      console.error("❌ [AUTH_CONTROLLER] Password reset request error:", error);
+      // Still return success to prevent information leakage
+      return successResponse(
+        null,
+        "If an account exists with that email, a password reset link has been sent."
+      );
+    }
+  }
+
+  /**
+   * Verify reset token validity
+   * @param {string} token - Reset token
+   * @returns {Object} Response with token validity status
+   */
+  async verifyResetToken(token) {
+    try {
+      console.log("🔐 [AUTH_CONTROLLER] verifyResetToken() called");
+      console.log("🔐 [AUTH_CONTROLLER] Token length:", token?.length || 0);
+
+      if (!token || typeof token !== "string") {
+        console.log("❌ [AUTH_CONTROLLER] Invalid token provided");
+        return errorResponse("Invalid or expired reset token", 400);
+      }
+
+      // Find user with this token and check expiration
+      const User = require("../schemas/UserSchema");
+      const user = await User.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: new Date() }, // Token not expired
+        isActive: true,
+      }).select("+resetPasswordToken");
+
+      if (!user) {
+        console.log("❌ [AUTH_CONTROLLER] Invalid or expired token");
+        return errorResponse("Invalid or expired reset token", 400);
+      }
+
+      console.log("✅ [AUTH_CONTROLLER] Token is valid");
+      return successResponse(
+        { email: user.email, valid: true },
+        "Token is valid"
+      );
+    } catch (error) {
+      console.error("❌ [AUTH_CONTROLLER] Token verification error:", error);
+      return errorResponse("Invalid or expired reset token", 400);
+    }
+  }
+
+  /**
+   * Reset password using token
+   * @param {string} token - Reset token
+   * @param {string} newPassword - New password
+   * @returns {Object} Response indicating success
+   */
+  async resetPassword(token, newPassword) {
+    try {
+      console.log("🔐 [AUTH_CONTROLLER] resetPassword() called");
+
+      if (!token || typeof token !== "string") {
+        return errorResponse("Invalid or expired reset token", 400);
+      }
+
+      if (!newPassword || newPassword.length < 6) {
+        return errorResponse(
+          "Password must be at least 6 characters long",
+          400
+        );
+      }
+
+      // Find user with this token and check expiration
+      const User = require("../schemas/UserSchema");
+      const user = await User.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: new Date() }, // Token not expired
+        isActive: true,
+      }).select("+resetPasswordToken +password");
+
+      if (!user) {
+        console.log("❌ [AUTH_CONTROLLER] Invalid or expired token");
+        return errorResponse("Invalid or expired reset token", 400);
+      }
+
+      // Update password (will be hashed by pre-save middleware)
+      user.password = newPassword;
+      // Clear reset token fields (single-use token)
+      user.resetPasswordToken = null;
+      user.resetPasswordExpires = null;
+      await user.save();
+
+      console.log("✅ [AUTH_CONTROLLER] Password reset successfully");
+      return successResponse(null, "Password has been reset successfully");
+    } catch (error) {
+      console.error("❌ [AUTH_CONTROLLER] Password reset error:", error);
+      return errorResponse(error.message || "Failed to reset password", 500);
     }
   }
 }
