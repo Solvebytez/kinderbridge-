@@ -144,6 +144,15 @@ const userSchema = new mongoose.Schema({
       promotional: false,
       acknowledgement: false
     })
+  },
+  resetPasswordToken: {
+    type: String,
+    default: null,
+    select: false // Don't return token by default
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true, // Automatically adds createdAt and updatedAt

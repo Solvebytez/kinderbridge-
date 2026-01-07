@@ -618,10 +618,296 @@ async function sendOTPEmail(email, otp) {
   }
 }
 
+/**
+ * Send welcome email after registration
+ * @param {string} email - User email address
+ * @param {string} firstName - User's first name
+ * @returns {Promise<Object>} Result object with success status
+ */
+async function sendWelcomeEmail(email, firstName = "User") {
+  try {
+    console.log("🔵 [EMAIL] sendWelcomeEmail called");
+    console.log(`🔵 [EMAIL] Email: ${email}`);
+    console.log(`🔵 [EMAIL] First Name: ${firstName}`);
+
+    // Validate email
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      console.error("❌ [EMAIL] Invalid email address provided:", email);
+      return {
+        success: false,
+        message: "Invalid email address",
+      };
+    }
+
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log("⚠️ [EMAIL] Email transporter not available. Skipping welcome email.");
+      return {
+        success: false,
+        message: "Email service not configured",
+      };
+    }
+
+    const firstNameValue = firstName || "User";
+    const brandName = process.env.SMTP_FROM_NAME || "KinderBridge";
+    const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_DEV_URL || "https://kinderbridge.ca";
+    const subject = `Welcome to ${brandName}, ${firstNameValue}! 🎉`;
+
+    // HTML welcome email template
+    const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to ${brandName}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
+    <tr>
+      <td style="padding: 20px 0;">
+        <table role="presentation" style="width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Welcome to ${brandName}! 🎉</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Hello, ${firstNameValue}!</h2>
+              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                Thank you for joining our ${brandName} community! We're thrilled to have you on board.
+              </p>
+              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                Your account has been successfully created. You can now start exploring our platform and find the perfect daycare for your needs.
+              </p>
+              
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; margin: 30px 0;">
+                <tr>
+                  <td style="text-align: center;">
+                    <a href="${frontendUrl}/search" style="display: inline-block; padding: 14px 30px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">Get Started</a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 20px 0 0 0; color: #666666; font-size: 14px; line-height: 1.6;">
+                If you have any questions, feel free to reach out to our support team. We're here to help!
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef;">
+              <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">
+                Best regards,<br>
+                <strong style="color: #333333;">The ${brandName} Team</strong>
+              </p>
+              <p style="margin: 10px 0 0 0; color: #999999; font-size: 12px;">
+                © ${new Date().getFullYear()} ${brandName}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    const mailOptions = {
+      from: getEmailFrom(),
+      to: email.trim(),
+      subject: subject,
+      html: htmlTemplate,
+    };
+
+    console.log("🔵 [EMAIL] Sending welcome email...");
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("✅ [EMAIL] Welcome email sent successfully");
+    console.log(`✅ [EMAIL] Message ID: ${info.messageId}`);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      message: "Welcome email sent successfully",
+    };
+  } catch (error) {
+    console.error("❌ [EMAIL] Exception in sendWelcomeEmail:");
+    console.error(`❌ [EMAIL] Error: ${error.message || "Unknown error"}`);
+    console.error(`❌ [EMAIL] Stack:`, error.stack);
+    return {
+      success: false,
+      error: error.message || "Failed to send welcome email",
+    };
+  }
+}
+
+/**
+ * Send password reset email
+ * @param {string} email - User email address
+ * @param {string} firstName - User's first name
+ * @param {string} resetToken - Password reset token
+ * @returns {Promise<Object>} Result object with success status
+ */
+async function sendPasswordResetEmail(email, firstName = "User", resetToken) {
+  try {
+    console.log("🔵 [EMAIL] sendPasswordResetEmail called");
+    console.log(`🔵 [EMAIL] Email: ${email}`);
+    console.log(`🔵 [EMAIL] First Name: ${firstName}`);
+    console.log(`🔵 [EMAIL] Reset Token: ${resetToken ? "Present" : "Missing"}`);
+
+    // Validate email
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      console.error("❌ [EMAIL] Invalid email address provided:", email);
+      return {
+        success: false,
+        message: "Invalid email address",
+      };
+    }
+
+    // Validate reset token
+    if (!resetToken || typeof resetToken !== "string") {
+      console.error("❌ [EMAIL] Invalid reset token provided");
+      return {
+        success: false,
+        message: "Reset token is required",
+      };
+    }
+
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log("⚠️ [EMAIL] Email transporter not available. Skipping password reset email.");
+      return {
+        success: false,
+        message: "Email service not configured",
+      };
+    }
+
+    const firstNameValue = firstName || "User";
+    const brandName = process.env.SMTP_FROM_NAME || "KinderBridge";
+    // Use production URL, fallback to dev URL for testing
+    const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_DEV_URL || "https://kinderbridge.ca";
+    const subject = `Reset Your Password - ${brandName}`;
+    const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+    // HTML password reset email template
+    const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your Password</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
+    <tr>
+      <td style="padding: 20px 0;">
+        <table role="presentation" style="width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Reset Your Password</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Hello, ${firstNameValue}!</h2>
+              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                We received a request to reset your password for your ${brandName} account.
+              </p>
+              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                Click the button below to reset your password. This link will expire in 1 hour for security reasons.
+              </p>
+              
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; margin: 30px 0;">
+                <tr>
+                  <td style="text-align: center;">
+                    <a href="${resetUrl}" style="display: inline-block; padding: 14px 30px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">Reset Password</a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 20px 0 0 0; color: #666666; font-size: 14px; line-height: 1.6;">
+                If the button doesn't work, copy and paste this link into your browser:
+              </p>
+              <p style="margin: 10px 0 0 0; color: #667eea; font-size: 12px; line-height: 1.6; word-break: break-all;">
+                ${resetUrl}
+              </p>
+              
+              <p style="margin: 30px 0 0 0; color: #999999; font-size: 14px; line-height: 1.6;">
+                If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef;">
+              <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">
+                Best regards,<br>
+                <strong style="color: #333333;">The ${brandName} Team</strong>
+              </p>
+              <p style="margin: 10px 0 0 0; color: #999999; font-size: 12px;">
+                © ${new Date().getFullYear()} ${brandName}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    const mailOptions = {
+      from: getEmailFrom(),
+      to: email.trim(),
+      subject: subject,
+      html: htmlTemplate,
+    };
+
+    console.log("🔵 [EMAIL] Sending password reset email...");
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("✅ [EMAIL] Password reset email sent successfully");
+    console.log(`✅ [EMAIL] Message ID: ${info.messageId}`);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      message: "Password reset email sent successfully",
+    };
+  } catch (error) {
+    console.error("❌ [EMAIL] Exception in sendPasswordResetEmail:");
+    console.error(`❌ [EMAIL] Error: ${error.message || "Unknown error"}`);
+    console.error(`❌ [EMAIL] Stack:`, error.stack);
+    return {
+      success: false,
+      error: error.message || "Failed to send password reset email",
+    };
+  }
+}
+
 module.exports = {
   sendPDFReport,
   sendRegistrationEmail,
   sendOTPEmail,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
   createTransporter
 };
 
