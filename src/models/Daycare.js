@@ -271,33 +271,17 @@ class DaycareModel {
         }
       }
 
-      // Age range filter (can be array or string)
+      // Age range filter - filters by ageGroups.capacity > 0 (YES = they accept that age group)
+      // Frontend sends: "Infants", "Toddlers", "Preschool", "School Age"
+      // Maps to: ageGroups.infant, ageGroups.toddler, ageGroups.preschool, ageGroups.schoolAge
       let ageRangeArray = [];
       if (ageRange) {
-        if (Array.isArray(ageRange) && ageRange.length > 0) {
-          filter.ageRange = { $in: ageRange };
-          ageRangeArray = ageRange;
-        } else if (typeof ageRange === "string") {
-          const parsed = ageRange.split(",").map((a) => a.trim());
-          if (parsed.length > 0) {
-            filter.ageRange = { $in: parsed };
-            ageRangeArray = parsed;
-          }
-        }
-      }
-
-      // Vacancy filter (cascading with ageRange)
-      // Meaning:
-      // - vacancy=yes  -> for selected age group(s), vacancy > 0 (any selected group)
-      // - vacancy=no   -> for selected age group(s), vacancy <= 0 or missing (all selected groups)
-      if (vacancy && Array.isArray(ageRangeArray) && ageRangeArray.length > 0) {
         const normalize = (s) =>
           String(s || "")
             .trim()
             .toLowerCase();
-        const wantYes = ["yes", "true", "1"].includes(normalize(vacancy));
-        const wantNo = ["no", "false", "0"].includes(normalize(vacancy));
 
+        // Map frontend values to database age group keys
         const ageKeyMap = {
           infants: "infant",
           infant: "infant",
@@ -309,31 +293,35 @@ class DaycareModel {
           schoolage: "schoolAge",
         };
 
-        const groupKeys = ageRangeArray
-          .map((a) => ageKeyMap[normalize(a)])
-          .filter(Boolean);
+        // Parse ageRange (can be array or string)
+        if (Array.isArray(ageRange) && ageRange.length > 0) {
+          ageRangeArray = ageRange;
+        } else if (typeof ageRange === "string") {
+          const parsed = ageRange.split(",").map((a) => a.trim());
+          if (parsed.length > 0) {
+            ageRangeArray = parsed;
+          }
+        }
 
-        if (groupKeys.length > 0) {
-          if (wantYes) {
+        // Filter by ageGroups.{group}.capacity > 0 (YES = they accept that age group)
+        if (ageRangeArray.length > 0) {
+          const groupKeys = ageRangeArray
+            .map((a) => ageKeyMap[normalize(a)])
+            .filter(Boolean);
+
+          if (groupKeys.length > 0) {
             filter.$and = filter.$and || [];
             filter.$and.push({
               $or: groupKeys.map((k) => ({
-                [`ageGroups.${k}.vacancy`]: { $gt: 0 },
-              })),
-            });
-          } else if (wantNo) {
-            filter.$and = filter.$and || [];
-            filter.$and.push({
-              $and: groupKeys.map((k) => ({
-                $or: [
-                  { [`ageGroups.${k}.vacancy`]: { $lte: 0 } },
-                  { [`ageGroups.${k}.vacancy`]: { $exists: false } },
-                ],
+                [`ageGroups.${k}.capacity`]: { $gt: 0 },
               })),
             });
           }
         }
       }
+
+      // Vacancy filter (cascading with ageRange) - DISABLED since vacancy field was removed
+      // Note: Vacancy filtering is no longer available as vacancy field was removed from ageGroups
 
       // Program age filter (exact match list)
       // Accepts comma-separated list via querystring: programAge=a,b,c
