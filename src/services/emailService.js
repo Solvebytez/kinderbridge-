@@ -778,7 +778,7 @@ async function sendWelcomeEmail(email, firstName = "User") {
 
                     <p>Keep an eye out for our "Phase 2" sneak peek coming soon. You don't want to miss the automation that will change the way you search and find daycare for your kid!</p>
                     
-                    <p style="margin-top: 30px;">Cheers,<br><strong>Abhishek & The ${brandName} Team</strong></p>
+                    <p style="margin-top: 30px;">Cheers,<br><strong>The ${brandName} Team</strong></p>
                 </td>
             </tr>
             <!-- FOOTER -->
@@ -809,7 +809,7 @@ Start your search now: ${frontendUrl}/search
 Keep an eye out for our "Phase 2" sneak peek coming soon. You don't want to miss the automation that will change the way you search and find daycare for your kid!
 
 Cheers,
-Abhishek & The ${brandName} Team
+The ${brandName} Team
 
 © ${new Date().getFullYear()} ${brandName} Inc. | Toronto, Ontario`;
 
