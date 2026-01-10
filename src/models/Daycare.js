@@ -168,7 +168,7 @@ class DaycareModel {
    */
   async getTypesByRegionAndCity(region, city) {
     await this.ensureConnection();
-    
+
     const matchStage = {
       daycareType: { $exists: true, $nin: ["", "NO"] },
     };
@@ -187,7 +187,7 @@ class DaycareModel {
       { $project: { _id: 0, value: "$_id" } },
       { $sort: { value: 1 } },
     ]);
-    
+
     return rows.map((r) => r.value);
   }
 
@@ -207,7 +207,6 @@ class DaycareModel {
         priceMax,
         availability,
         ageRange,
-        vacancy,
         programAge,
         features,
         region,
@@ -257,21 +256,7 @@ class DaycareModel {
         if (priceMax) filter.price.$lte = parseFloat(priceMax);
       }
 
-      // Availability filter (can be array or string)
-      if (availability) {
-        if (Array.isArray(availability) && availability.length > 0) {
-          filter.availability = { $in: availability };
-        } else if (typeof availability === "string") {
-          const availabilityArray = availability
-            .split(",")
-            .map((a) => a.trim());
-          if (availabilityArray.length > 0) {
-            filter.availability = { $in: availabilityArray };
-          }
-        }
-      }
-
-      // Age range filter - filters by ageGroups.capacity > 0 (YES = they accept that age group)
+      // Age range filter - filters by ageGroups.capacity based on availability parameter
       // Frontend sends: "Infants", "Toddlers", "Preschool", "School Age"
       // Maps to: ageGroups.infant, ageGroups.toddler, ageGroups.preschool, ageGroups.schoolAge
       let ageRangeArray = [];
@@ -303,7 +288,9 @@ class DaycareModel {
           }
         }
 
-        // Filter by ageGroups.{group}.capacity > 0 (YES = they accept that age group)
+        // Filter by ageGroups.{group}.capacity based on availability parameter
+        // availability=yes or not provided → capacity > 0 (they accept that age group)
+        // availability=no → capacity = 0 (they do NOT accept that age group)
         if (ageRangeArray.length > 0) {
           const groupKeys = ageRangeArray
             .map((a) => ageKeyMap[normalize(a)])
@@ -311,11 +298,40 @@ class DaycareModel {
 
           if (groupKeys.length > 0) {
             filter.$and = filter.$and || [];
-            filter.$and.push({
-              $or: groupKeys.map((k) => ({
-                [`ageGroups.${k}.capacity`]: { $gt: 0 },
-              })),
-            });
+
+            // Check availability status
+            const normalizeAvailability = String(availability || "")
+              .trim()
+              .toLowerCase();
+
+            if (normalizeAvailability === "no") {
+              // Filter for capacity = 0 OR field doesn't exist (they do NOT accept this age group)
+              filter.$and.push({
+                $or: groupKeys.flatMap((k) => [
+                  { [`ageGroups.${k}.capacity`]: { $eq: 0 } },
+                  { [`ageGroups.${k}.capacity`]: { $exists: false } },
+                  { [`ageGroups.${k}`]: { $exists: false } },
+                ]),
+              });
+              console.log(
+                "🔍 Filtering for capacity = 0 or missing, groupKeys:",
+                groupKeys
+              );
+            } else {
+              // Default: Filter for capacity > 0 (they accept this age group)
+              // Field must exist and capacity must be > 0
+              filter.$and.push({
+                $or: groupKeys.map((k) => ({
+                  [`ageGroups.${k}.capacity`]: { $gt: 0 },
+                })),
+              });
+              console.log(
+                "🔍 Filtering for capacity > 0, groupKeys:",
+                groupKeys,
+                "availability:",
+                availability
+              );
+            }
           }
         }
       }
@@ -378,8 +394,28 @@ class DaycareModel {
       const limitNum = parseInt(limit, 10) || 10;
       const skip = (pageNum - 1) * limitNum;
 
+      // Debug: Log the filter being used
+      console.log(
+        "🔍 Final filter for search:",
+        JSON.stringify(filter, null, 2)
+      );
+
+      // Debug: Count with only region filter (to compare with Excel)
+      if (region) {
+        const regionOnlyFilter = { region: { $regex: region, $options: "i" } };
+        const regionOnlyCount = await Daycare.countDocuments(regionOnlyFilter);
+        console.log(
+          `🔍 Count with ONLY region="${region}" filter (no ageRange):`,
+          regionOnlyCount
+        );
+      }
+
       // Get total count of matching documents
       const totalCount = await Daycare.countDocuments(filter);
+      console.log(
+        `🔍 Total count with ALL filters (region + ageRange + availability):`,
+        totalCount
+      );
 
       // Get paginated results
       const daycares = await Daycare.find(filter)
@@ -398,11 +434,16 @@ class DaycareModel {
           priceStringType: typeof firstDaycare.priceString,
           hasPriceString: !!firstDaycare.priceString,
           priceStringValue: firstDaycare.priceString,
-          allFields: Object.keys(firstDaycare).filter(k => k.includes('price') || k.includes('Price'))
+          allFields: Object.keys(firstDaycare).filter(
+            (k) => k.includes("price") || k.includes("Price")
+          ),
         });
-        
+
         // Log ALL fields to see what's actually in the database
-        console.log("📋 ALL FIELDS in first daycare:", Object.keys(firstDaycare).sort());
+        console.log(
+          "📋 ALL FIELDS in first daycare:",
+          Object.keys(firstDaycare).sort()
+        );
       }
 
       // Calculate pagination metadata
