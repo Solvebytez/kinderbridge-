@@ -42,11 +42,12 @@ const contactLogSchema = new mongoose.Schema(
           "Follow-up",
           "Application Status",
           "Schedule Visit",
+          "Registered into Waitlist",
           "Question",
           "Other",
         ],
         message:
-          "Purpose must be one of: Initial Inquiry, Follow-up, Application Status, Schedule Visit, Question, Other",
+          "Purpose must be one of: Initial Inquiry, Follow-up, Application Status, Schedule Visit, Registered into Waitlist, Question, Other",
       },
       index: true,
     },
