@@ -214,6 +214,7 @@ class DaycareModel {
         daycareType,
         cwelcc,
         subsidy,
+        vacancy,
         page = 1,
         limit = 10,
       } = searchParams;
@@ -256,7 +257,7 @@ class DaycareModel {
         if (priceMax) filter.price.$lte = parseFloat(priceMax);
       }
 
-      // Age range filter - filters by ageGroups.capacity based on availability parameter
+      // Age range filter - filters by ageGroups existence (shows all daycares that offer that age group)
       // Frontend sends: "Infants", "Toddlers", "Preschool", "School Age"
       // Maps to: ageGroups.infant, ageGroups.toddler, ageGroups.preschool, ageGroups.schoolAge
       let ageRangeArray = [];
@@ -288,8 +289,8 @@ class DaycareModel {
           }
         }
 
-        // Filter by ageGroups.{group}.capacity based on availability parameter
-        // availability=yes or not provided → capacity > 0 (they accept that age group)
+        // Filter by ageGroups with capacity filtering based on availability parameter
+        // availability=yes (default) → capacity > 0 (they accept that age group)
         // availability=no → capacity = 0 (they do NOT accept that age group)
         if (ageRangeArray.length > 0) {
           const groupKeys = ageRangeArray
@@ -299,8 +300,8 @@ class DaycareModel {
           if (groupKeys.length > 0) {
             filter.$and = filter.$and || [];
 
-            // Check availability status
-            const normalizeAvailability = String(availability || "")
+            // Check availability status (default to "yes" if not provided)
+            const normalizeAvailability = String(availability || "yes")
               .trim()
               .toLowerCase();
 
@@ -319,7 +320,6 @@ class DaycareModel {
               );
             } else {
               // Default: Filter for capacity > 0 (they accept this age group)
-              // Field must exist and capacity must be > 0
               filter.$and.push({
                 $or: groupKeys.map((k) => ({
                   [`ageGroups.${k}.capacity`]: { $gt: 0 },
@@ -329,15 +329,85 @@ class DaycareModel {
                 "🔍 Filtering for capacity > 0, groupKeys:",
                 groupKeys,
                 "availability:",
-                availability
+                availability || "yes (default)"
               );
             }
           }
         }
       }
 
-      // Vacancy filter (cascading with ageRange) - DISABLED since vacancy field was removed
-      // Note: Vacancy filtering is no longer available as vacancy field was removed from ageGroups
+      // Vacancy filter (cascading with ageRange) - DISABLED for now
+      // filters by ageGroups.{group}.vacancy
+      /*
+      if (ageRange && vacancy) {
+        const normalize = (s) =>
+          String(s || "")
+            .trim()
+            .toLowerCase();
+
+        const ageKeyMap = {
+          infants: "infant",
+          infant: "infant",
+          toddlers: "toddler",
+          toddler: "toddler",
+          preschool: "preschool",
+          kindergarten: "kindergarten",
+          "school age": "schoolAge",
+          schoolage: "schoolAge",
+        };
+
+        let ageRangeArray = [];
+        if (Array.isArray(ageRange) && ageRange.length > 0) {
+          ageRangeArray = ageRange;
+        } else if (typeof ageRange === "string") {
+          const parsed = ageRange.split(",").map((a) => a.trim());
+          if (parsed.length > 0) {
+            ageRangeArray = parsed;
+          }
+        }
+
+        if (ageRangeArray.length > 0) {
+          const groupKeys = ageRangeArray
+            .map((a) => ageKeyMap[normalize(a)])
+            .filter(Boolean);
+
+          if (groupKeys.length > 0) {
+            filter.$and = filter.$and || [];
+            const normalizeVacancy = String(vacancy || "")
+              .trim()
+              .toLowerCase();
+
+            if (normalizeVacancy === "no") {
+              // Filter for vacancy = 0 OR field doesn't exist (no vacancy)
+              filter.$and.push({
+                $or: groupKeys.flatMap((k) => [
+                  { [`ageGroups.${k}.vacancy`]: { $eq: 0 } },
+                  { [`ageGroups.${k}.vacancy`]: { $exists: false } },
+                  { [`ageGroups.${k}`]: { $exists: false } },
+                ]),
+              });
+              console.log(
+                "🔍 Filtering for vacancy = 0 or missing, groupKeys:",
+                groupKeys
+              );
+            } else {
+              // Default: Filter for vacancy > 0 (has vacancy)
+              filter.$and.push({
+                $or: groupKeys.map((k) => ({
+                  [`ageGroups.${k}.vacancy`]: { $gt: 0 },
+                })),
+              });
+              console.log(
+                "🔍 Filtering for vacancy > 0, groupKeys:",
+                groupKeys,
+                "vacancy:",
+                vacancy
+              );
+            }
+          }
+        }
+      }
+      */
 
       // Program age filter (exact match list)
       // Accepts comma-separated list via querystring: programAge=a,b,c
