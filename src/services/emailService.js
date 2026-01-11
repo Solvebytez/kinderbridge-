@@ -148,14 +148,6 @@ This is an automated email. Please do not reply to this message.`;
           contentType: 'application/pdf'
         }
       ],
-      // Add headers to improve deliverability
-      headers: {
-        'X-Priority': '1',
-        'X-MSMail-Priority': 'High',
-        'Importance': 'high',
-        'List-Unsubscribe': `<${frontendUrl}/contact>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
       // Add reply-to for better sender reputation
       replyTo: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
     };
@@ -819,14 +811,6 @@ The ${brandName} Team
       subject: subject,
       text: textTemplate, // Plain text version
       html: htmlTemplate,
-      // Add headers to improve deliverability
-      headers: {
-        'X-Priority': '1',
-        'X-MSMail-Priority': 'High',
-        'Importance': 'high',
-        'List-Unsubscribe': `<${frontendUrl}/contact>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
       // Add reply-to for better sender reputation
       replyTo: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
     };
@@ -1002,14 +986,6 @@ The ${brandName} Team
       subject: subject,
       text: textTemplate, // Plain text version
       html: htmlTemplate,
-      // Add headers to improve deliverability
-      headers: {
-        'X-Priority': '1',
-        'X-MSMail-Priority': 'High',
-        'Importance': 'high',
-        'List-Unsubscribe': `<${frontendUrl}/contact>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
       // Add reply-to for better sender reputation
       replyTo: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
     };
@@ -1184,14 +1160,6 @@ The ${brandName} Team
       subject: subject,
       text: textTemplate, // Plain text version
       html: htmlTemplate,
-      // Add headers to improve deliverability
-      headers: {
-        'X-Priority': '1',
-        'X-MSMail-Priority': 'High',
-        'Importance': 'high',
-        'List-Unsubscribe': `<${frontendUrl}/contact>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
       // Add reply-to for better sender reputation
       replyTo: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
     };
