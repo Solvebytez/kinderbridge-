@@ -211,3 +211,5 @@ Value: (DKIM public key from Porkbun)
 - Gradually increase DMARC policy strictness as confidence grows
 - Keep DNS records simple and avoid conflicting records
 
+
+
