@@ -53,11 +53,6 @@ const ageGroupSchema = new mongoose.Schema(
       min: 0,
       max: 5,
     },
-    offers: {
-      type: String,
-      default: "",
-      trim: true,
-    },
   },
   { _id: false }
 );
@@ -271,7 +266,7 @@ const daycareSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    collection: 'daycares_master',
+    collection: 'daycares',
   }
 );
 
