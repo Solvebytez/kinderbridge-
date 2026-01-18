@@ -52,27 +52,31 @@ class DaycareModel {
   }
 
   /**
-   * Get daycare by ID
-   * @param {string} id - Daycare ID
+   * Get daycare by ID or slug (v15.0.0 - slug support)
+   * @param {string} idOrSlug - Daycare ID or slug
    * @returns {Object} Daycare object
    */
-  async getDaycareById(id) {
+  async getDaycareById(idOrSlug) {
     try {
       await this.ensureConnection();
 
-      // Try ObjectId first, then string search
       let daycare;
 
-      // Check if it's a valid ObjectId
-      const mongoose = require("mongoose");
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        daycare = await Daycare.findById(id);
+      // v15.0.0: Try slug first (better SEO, more readable URLs)
+      daycare = await Daycare.findOne({ slug: idOrSlug });
+
+      // If not found by slug, try ObjectId
+      if (!daycare) {
+        const mongoose = require("mongoose");
+        if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
+          daycare = await Daycare.findById(idOrSlug);
+        }
       }
 
-      // If not found, try string search
+      // If still not found, try string search (backward compatibility)
       if (!daycare) {
         daycare = await Daycare.findOne({
-          $or: [{ id: id }, { name: { $regex: id, $options: "i" } }],
+          $or: [{ id: idOrSlug }, { name: { $regex: idOrSlug, $options: "i" } }],
         });
       }
 
@@ -336,9 +340,8 @@ class DaycareModel {
         }
       }
 
-      // Vacancy filter (cascading with ageRange) - DISABLED for now
+      // Vacancy filter (cascading with ageRange) - v14.0.0
       // filters by ageGroups.{group}.vacancy
-      /*
       if (ageRange && vacancy) {
         const normalize = (s) =>
           String(s || "")
@@ -407,7 +410,6 @@ class DaycareModel {
           }
         }
       }
-      */
 
       // Program age filter (exact match list)
       // Accepts comma-separated list via querystring: programAge=a,b,c
@@ -617,6 +619,82 @@ class DaycareModel {
       await this.ensureConnection();
 
       return await Daycare.getStats();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get vacancy statistics by age group for a specific region
+   * Returns total number of available spots (sum of all vacancies)
+   * @param {string} region - Region name (e.g., "Toronto")
+   * @returns {Object} Total spots available by age group
+   */
+  async getVacancyStats(region) {
+    try {
+      await this.ensureConnection();
+
+      // Find all daycares in the specified region
+      const daycares = await Daycare.find({ region: { $regex: region, $options: "i" } }).lean();
+
+      // Initialize counters - sum total spots, not daycares
+      const stats = {
+        infant: 0,
+        toddler: 0,
+        preschool: 0,
+        kindergarten: 0,
+        schoolAge: 0,
+      };
+
+      // Sum up total vacancy spots for each age group
+      daycares.forEach((daycare) => {
+        if (daycare.ageGroups) {
+          // Infant - sum total vacancy spots
+          if (
+            daycare.ageGroups.infant &&
+            daycare.ageGroups.infant.vacancy > 0
+          ) {
+            stats.infant += daycare.ageGroups.infant.vacancy;
+          }
+
+          // Toddler - sum total vacancy spots
+          if (
+            daycare.ageGroups.toddler &&
+            daycare.ageGroups.toddler.vacancy > 0
+          ) {
+            stats.toddler += daycare.ageGroups.toddler.vacancy;
+          }
+
+          // Preschool - sum total vacancy spots
+          if (
+            daycare.ageGroups.preschool &&
+            daycare.ageGroups.preschool.vacancy > 0
+          ) {
+            stats.preschool += daycare.ageGroups.preschool.vacancy;
+          }
+
+          // Kindergarten - sum total vacancy spots
+          if (
+            daycare.ageGroups.kindergarten &&
+            daycare.ageGroups.kindergarten.vacancy > 0
+          ) {
+            stats.kindergarten += daycare.ageGroups.kindergarten.vacancy;
+          }
+
+          // School Age - sum total vacancy spots
+          if (
+            daycare.ageGroups.schoolAge &&
+            daycare.ageGroups.schoolAge.vacancy > 0
+          ) {
+            stats.schoolAge += daycare.ageGroups.schoolAge.vacancy;
+          }
+        }
+      });
+
+      return {
+        region: region,
+        ...stats,
+      };
     } catch (error) {
       throw error;
     }
